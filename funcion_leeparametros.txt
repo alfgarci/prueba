@@ -1,0 +1,75 @@
+/************************************************************************/
+/***********    FUNCION: leeparametros     ******************************/
+/************************************************************************/
+
+void leeparametros(struct ParametrosBus *parambus, struct ParametrosCliente *paramclientes, int *maxclientes, int *creamin,int *creamax)
+{
+ int ok=0;
+
+ *maxclientes=30; //Numero de clientes que se crearan
+ *creamin=1;   //Intervalo de tiempo para crear nuevos clientes MIN
+ *creamax=5;   //Intervalo de tiempo para crear nuevos clientes MAX
+ parambus->numparadas = paramclientes->numparadas=6;   // Cantidad de paradas
+ parambus->capacidadbus=5;  //Capacidad del bus
+ parambus->tiempotrayecto=3;   // Tiempo del trayecto entre paradas
+ paramclientes->aburrimientomax=12;   //Intervalo de tiempo en aburrirse MAX
+ paramclientes->aburrimientomin=20;  //Intervalo de tiempo en aburrirse MIN
+ 
+ while(ok == 0)
+ {
+	system("clear");
+	printf("Valores de los parámetros...\n\n");
+	printf("Numero de pasajeros que se crearan: %d\n",*maxclientes);
+	printf("Intervalo de tiempo para crear nuevos pasajeros: [%d-%d] \n",*creamin,*creamax);
+	printf("Número de paradas: %d\n",parambus->numparadas);
+	printf("Capacidad del Bus: %d\n",parambus->capacidadbus);
+	printf("Tiempo en el trayecto entre paradas: %d\n",parambus->tiempotrayecto);
+	printf("Intervalo de tiempo de aburrimiento: [%d-%d]\n",paramclientes->aburrimientomin,paramclientes->aburrimientomax); 
+	printf("Pulse 0 si desea introducir nuevos valores, cualquier otro valor si desea continuar.\n");
+	scanf("%d",&ok);
+
+	if(ok == 0){
+		do{
+			printf("Numero de pasajeros que se crearan [maximo 50]:\n");
+			scanf("%d",maxclientes);
+		}while(*maxclientes <= 0 || *maxclientes > 50);
+
+		do{
+			printf("Intervalo de tiempo para crear nuevos pasajeros MIN [entre 1 y 8]: \n");
+			scanf("%d",creamin);
+		}while(*creamin< 1 ||*creamin > 8 );
+
+		do{
+			printf("Intervalo de tiempo para crear nuevos pasajeros MAX [entre 2 y 20]: \n");
+			scanf("%d",creamax);
+		}while(*creamax < 2 || *creamax > 20 || *creamax<=*creamin);
+ 
+		do{
+			printf("Número de paradas: \n");
+			scanf("%d",&parambus->numparadas);
+		}while(parambus->numparadas < 2 || parambus->numparadas > 6);
+		paramclientes->numparadas=parambus->numparadas;
+	
+		do{
+			printf("Capacidad del bus [maximo 10]: \n");
+			scanf("%d",&parambus->capacidadbus);
+		}while(parambus->capacidadbus <= 0 || parambus->capacidadbus > 10);
+	
+		do{
+			printf("Tiempo en el trayecto entre paradas [maximo 10]:\n");
+			scanf("%d",&parambus->tiempotrayecto);
+		}while(parambus->tiempotrayecto < 1 ||parambus->tiempotrayecto > 10 );
+	
+		do{
+			printf("Intervalo de tiempo en esperar para aburrirse MIN [entre 10 y 20]:\n");
+			scanf("%d",&paramclientes->aburrimientomin);
+		}while(paramclientes->aburrimientomin< 1 || paramclientes->aburrimientomin > 10 );
+	
+		do{
+			printf("Intervalo de tiempo en esperar para aburrirse MAX [entre 15 y 40]:\n");
+			scanf("%d",&paramclientes->aburrimientomax);
+		}while(paramclientes->aburrimientomax < 5 || paramclientes->aburrimientomax > 20 || paramclientes->aburrimientomin > paramclientes->aburrimientomax);
+	}
+ }
+}
+
