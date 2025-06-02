@@ -11,6 +11,9 @@
 
 int crea_cola(key_t clave);
 
+// Prototipo de la función de visualización
+void visualiza(int id_cola, int tipo_elemento, int parada, int in_out, int pinta_borra, int destino);
+
 // informacion que se lee de peticiones de escritura
 struct tipo_elemento{
  long tipo; //obligatorio para la cola de mensajes

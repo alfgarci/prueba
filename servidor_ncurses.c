@@ -10,7 +10,9 @@
 #include "definiciones.h"
 #include "comun.h"
 
-
+// Color pair definitions for Revisor (global to this file)
+#define COLOR_PAIR_REVISOR_LLEGADA 7
+#define COLOR_PAIR_REVISOR_BUS_SALIDA 8
 
 /***** PROTOTIPOS DE FUNCONES *******************/ 
 void pinta_escenario();
@@ -103,8 +105,57 @@ int main(int argc, char *argv[])
 
 	if(peticion.inout==IN) pinta_clientes_inverso(vparadain[peticion.parada],datos_paradain,peticion.parada);
 	else pinta_clientes(vparadaout[peticion.parada],datos_paradaout,peticion.parada);
-  }
-  else { //son peticiones del autobús	
+  } // Fin de TIPO_CLIENTE (peticion.tipo == 2)
+  else if (peticion.tipo == TIPO_REVISOR) { 
+      WINDOW *target_window = NULL;
+      int color_pair_id = 0; 
+      char display_text[25]; 
+
+      // visualiza_peticion() ya fue llamada antes del if/else if.
+      // peticion.tipo, peticion.pid, peticion.parada, peticion.inout, 
+      // peticion.pintaborra, peticion.destino están disponibles.
+      // TIPO_REVISOR (3), PINTAR (1), BORRAR (0), IN (1), OUT (0)
+      // COLOR_PAIR_REVISOR_LLEGADA (7 - Green/Black)
+      // COLOR_PAIR_REVISOR_BUS_SALIDA (8 - Yellow/Black)
+
+      if (peticion.parada == 0) { // Revisor en el bus
+          target_window = vparadaout[0]; // vparadaout[0] es la ventana del bus
+          color_pair_id = COLOR_PAIR_REVISOR_BUS_SALIDA;
+      } else if (peticion.parada > 0 && peticion.parada <= ultimaparada) { // Revisor en una parada válida
+          if (peticion.inout == IN) { // Llegando a la parada
+              target_window = vparadain[peticion.parada];
+              color_pair_id = COLOR_PAIR_REVISOR_LLEGADA;
+          } else { // OUT - Saliendo de la parada (o ya en la zona de salida)
+              target_window = vparadaout[peticion.parada];
+              color_pair_id = COLOR_PAIR_REVISOR_BUS_SALIDA;
+          }
+      }
+
+      if (target_window) {
+          // El revisor se mostrará en la primera línea de la ventana correspondiente.
+          wmove(target_window, 0, 0); // Mover cursor a la primera línea, primera columna
+          wclrtoeol(target_window);   // Limpiar desde el cursor hasta el final de la línea
+
+          if (peticion.pintaborra == PINTAR) {
+              // Formato: R<PID_MOD_100>-><DESTINO_PARADA>
+              sprintf(display_text, "R%02d->%d", peticion.pid % 100, peticion.destino);
+              wattron(target_window, COLOR_PAIR(color_pair_id));
+              // Escribir en la primera línea, columna 1 (para un pequeño margen)
+              mvwprintw(target_window, 0, 1, "%s", display_text); 
+              wattroff(target_window, COLOR_PAIR(color_pair_id));
+              
+              // Enviar señal SIGUSR1 (10) al revisor para confirmar pintado
+              if (kill(peticion.pid, 10) == -1) {
+                  // Opcional: manejar error si kill falla, ej. log a vmensajes
+                  // perror("Servidor_ncurses: kill SIGUSR1 a revisor falló");
+                  // mvwprintw(vmensajes, 0,0, "Error kill R%d", peticion.pid); wrefresh(vmensajes);
+              }
+          }
+          // Si es BORRAR, la línea ya fue limpiada por wclrtoeol.
+          wrefresh(target_window);
+      }
+  } // Fin de TIPO_REVISOR
+  else { //son peticiones del autobús	(asumiendo TIPO_BUS = 1, o cualquier tipo no cliente y no revisor)
 	werase(vcarretera);
 	if(peticion.parada<10) { // son las paradas
 		mvwprintw(vcarretera,0,ANCHO*3*(peticion.parada-1)+ANCHO+ANCHO/2,"_____ ");
@@ -215,7 +266,9 @@ void pinta_escenario()
    init_pair(COLOR_FONDO,COLOR_WHITE,COLOR_BLACK);
    init_pair(COLOR_DIBUJOBUS,COLOR_YELLOW,COLOR_BLACK);
    init_pair(COLOR_ACERA,COLOR_YELLOW,COLOR_BLUE);
- 
+   // New color pairs for Revisor
+   init_pair(COLOR_PAIR_REVISOR_LLEGADA, COLOR_GREEN, COLOR_BLACK);
+   init_pair(COLOR_PAIR_REVISOR_BUS_SALIDA, COLOR_YELLOW, COLOR_BLACK);
 
  
 //***********

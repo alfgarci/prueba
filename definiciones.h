@@ -13,6 +13,10 @@
 #define COLOR_DIBUJOBUS 5
 #define COLOR_ACERA 6
 
+// Tipos de elementos para la cola de mensajes (añadido)
+#define TIPO_BUS 1
+#define TIPO_CLIENTE 2
+#define TIPO_REVISOR 3 // Nueva constante para el revisor
 
 //informacion que se almacena de cada cliente
 struct cliente{

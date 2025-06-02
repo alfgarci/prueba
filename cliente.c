@@ -8,11 +8,12 @@
 #include <unistd.h>
 
 #include "comun.h"
+#include "definiciones.h" // For TIPO_CLIENTE
 
 void R10();
 void R12();
 void R14();
-void visualiza(int cola, int parada, int inout, int pintaborra, int destino);
+// La función visualiza se usará desde comun.c, se elimina la local.
 
 int llega12 = 0, llega10 = 0, llega14=0, pidbus;;
 
@@ -61,7 +62,7 @@ int main() {
     perror("Error al abrir la fifo de parada");
 
   // Nos pintamos en la parada
-  visualiza(colagrafica, llega, IN, PINTAR, sale);
+  visualiza(colagrafica, TIPO_CLIENTE, llega, IN, PINTAR, sale);
   // Enviamos la peticion a la cola de paradas
   pasajero.tipo = llega;
   pasajero.pid = getpid();
@@ -81,21 +82,23 @@ int main() {
     alarm(0); // Desactivo la alarma
     llega12 = 0;
 
-    visualiza(colagrafica, llega, IN, BORRAR, sale);
-    visualiza(colagrafica, 0, 0, PINTAR, sale);
+    visualiza(colagrafica, TIPO_CLIENTE, llega, IN, BORRAR, sale);
+    // Cliente en el bus: parada 0. El valor de inout (segundo 0) es irrelevante para el bus.
+    visualiza(colagrafica, TIPO_CLIENTE, 0, 0, PINTAR, sale); 
 
     // Espero a que el bus me deje en la parada de salida, cuando tenga el testigo
     // en la fifo de salida
     if (read(fifosalir, &testigo, sizeof(testigo)) <= 0)
       perror("Error al leer la fifo de salida");
 
-    visualiza(colagrafica, 0, 0, BORRAR, sale);
-    visualiza(colagrafica, sale, OUT, PINTAR, sale);
+    visualiza(colagrafica, TIPO_CLIENTE, 0, 0, BORRAR, sale);
+    visualiza(colagrafica, TIPO_CLIENTE, sale, OUT, PINTAR, sale);
 
   }else{
-    //Es la 14 la que ha llegado
-    visualiza(colagrafica, llega, IN, BORRAR, sale);//Borro de la cola 
-    visualiza(colagrafica, 7, OUT, PINTAR, sale);// Pinto cera OUT = 0
+    //Es la 14 la que ha llegado (cliente se aburre y se va a la acera)
+    visualiza(colagrafica, TIPO_CLIENTE, llega, IN, BORRAR, sale); // Borro de la cola de llegada
+    // Parada 7 es la acera, OUT es consistente con la lógica de paradas de salida.
+    visualiza(colagrafica, TIPO_CLIENTE, 7, OUT, PINTAR, sale); // Pinto en acera 
 
     //Esperamos a la 12 porque si o si va a llegar, es cuando vamos a contentar si se monta o no 
     if (!llega12)
@@ -108,31 +111,7 @@ int main() {
   return 0;
 }
 
-/************************************************************************/
-/***********   FUNCION: visualiza     ***********************************/
-/************************************************************************/
-// Pinta o borra en el servidor gráfico
-
-void visualiza(int cola, int parada, int inout, int pintaborra, int destino) {
-  struct tipo_elemento peticion;
-
-  peticion.tipo = 2; // Los clientes son tipo 2, el autobus tipo 1
-  peticion.pid = getpid();
-  peticion.parada = parada;
-  peticion.inout = inout;
-  peticion.pintaborra = pintaborra;
-  peticion.destino = destino;
-
-  if (msgsnd(cola, (struct tipo_elemento *)&peticion,
-             sizeof(struct tipo_elemento) - sizeof(long), 0) == -1)
-    perror("Error al enviar a la cola de mensajes del servidor");
-
-  if (pintaborra == PINTAR) {
-    if (!llega10)
-      pause(); // espero conformidad de que me han pintado, sino me mataran
-    llega10 = 0;
-  }
-}
+// Se elimina la definición local de visualiza, ya que ahora se usa la de comun.c
 
 /************************************************************************/
 /***********    FUNCION: R10     ****************************************/
