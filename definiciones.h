@@ -13,6 +13,10 @@
 #define COLOR_DIBUJOBUS 5
 #define COLOR_ACERA 6
 
+// Pares de colores para el Revisor (usados en servidor_ncurses.c)
+#define COLOR_REVISOR_VERDE_PARADAIN 7
+#define COLOR_REVISOR_NEGRO_BUS 8
+#define COLOR_REVISOR_NEGRO_PARADAOUT 9
 
 //informacion que se almacena de cada cliente
 struct cliente{

@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
+// #include <sys/wait.h> // Ya incluido indirectamente por signal.h o sys/types.h, pero es buena práctica.
 
 #include "comun.h"
 
@@ -27,8 +28,8 @@ int llega10 = 0;
 
 int main() {
 
-  int pservidorgraf, i, pidbus;
-  int tubocliente[2], tubobus[2];
+  int pservidorgraf, i, pidbus, pid_revisor;
+  int tubocliente[2], tubobus[2], tubo_revisor_conteo[2];
   char nombrefifo[10];
   int fifos[7];
 
@@ -65,12 +66,52 @@ int main() {
   // Creamos las pipes para los parametos de bus y cliente
   pipe(tubobus);
   pipe(tubocliente);
+  if (pipe(tubo_revisor_conteo) == -1) {
+    perror("Principal: Error al crear tubo_revisor_conteo");
+    exit(-1);
+  }
 
   // Creamos el proceso bus, pasandole la lectura de la pipe
   pidbus = creaproceso("bus", tubobus[0]);
+
+  // Creamos el proceso revisor
+  char n_paradas_str_revisor[3]; // Para pasar numparadas al revisor
+  sprintf(n_paradas_str_revisor, "%d", parambus.numparadas);
+
+  pid_revisor = fork();
+  if (pid_revisor == 0) { // Proceso hijo - Revisor
+    close(tubobus[0]); close(tubobus[1]);        // Cerrar pipes no usadas por revisor
+    close(tubocliente[0]); close(tubocliente[1]);
+    // El revisor usará tubo_revisor_conteo[0] para leer.
+    // Se cierra el extremo de escritura (tubo_revisor_conteo[1]) en el hijo.
+    close(tubo_revisor_conteo[1]);
+
+    char fd_conteo_str[10];
+    sprintf(fd_conteo_str, "%d", tubo_revisor_conteo[0]);
+
+    execl("./revisor", "revisor", n_paradas_str_revisor, fd_conteo_str, NULL);
+    perror("Principal: Error en execl para revisor");
+    exit(-1);
+  } else if (pid_revisor == -1) {
+    perror("Principal: Error en fork para revisor");
+    // Aquí se podrían cerrar las pipes abiertas y terminar procesos previos si es necesario.
+    exit(-1);
+  }
+  // Proceso Principal continúa...
+  // Principal cierra el extremo de lectura de la pipe de conteo del revisor, ya que no lo usará.
+  // El extremo de escritura se pasa al bus.
+  close(tubo_revisor_conteo[0]);
+
   // Escribimos los parametros al bus, por la pipe
+  parambus.pid_revisor = pid_revisor;
+  parambus.fd_pipe_conteo_revisor = tubo_revisor_conteo[1];
   if (write(tubobus[1], &parambus, sizeof(parambus)) == -1)
     perror("error al escribir parametros al bus");
+
+  close(tubobus[1]); // Principal ya no necesita este extremo de la pipe del bus
+  // Principal ya no necesita este extremo de la pipe de conteo después de pasarlo al bus
+  close(tubo_revisor_conteo[1]);
+
 
   for (i = 1; i <= maxclientes; i++) {
     // Creamos el proceso cliente, pasandole la lectura de la pipe
@@ -87,7 +128,10 @@ int main() {
   // Esperamos que todos los clientes finalicen
   for (i = 1; i <= maxclientes; i++)
     wait(NULL);
-  sleep(2);
+
+  // Esperamos al revisor (podría haber terminado antes o después que los clientes)
+  wait(NULL);
+  sleep(2); // Mantener este sleep si es necesario para la lógica de terminación
 
   // Avisamos al bus para que termine
   if (kill(pidbus, 12) == -1) {

@@ -10,6 +10,8 @@
 #include "definiciones.h"
 #include "comun.h"
 
+// Las definiciones de COLOR_REVISOR_* han sido movidas a definiciones.h
+
 
 
 /***** PROTOTIPOS DE FUNCONES *******************/ 
@@ -18,8 +20,9 @@ void pinta_escenario();
 void inserta(struct cliente laventana[][MAXCLIENTES], int parada, int elpid, int destino);
 void quita(struct cliente laventana[][MAXCLIENTES], int parada, int elpid);
 void visualiza_peticion(struct tipo_elemento peticion);
-void pinta_clientes_inverso(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada);
-void pinta_clientes(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada);
+// Funciones de pintado refactorizadas
+void pinta_entidades_inverso(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada, int tipo_entidad);
+void pinta_entidades(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada, int tipo_entidad);
 
 void limpia_array(struct cliente datos[MAXPARADAS][MAXCLIENTES]);
 void R12();
@@ -90,38 +93,87 @@ int main(int argc, char *argv[])
    visualiza_peticion(peticion);
 
   //decodifico y ejecuto la peticion sobre los arrays
-  if(peticion.tipo==2){ // Son peticiones de clientes
-	if(peticion.pintaborra==PINTAR)
-  {
-		if(peticion.inout==IN) inserta(datos_paradain,peticion.parada,peticion.pid,peticion.destino);
-		else inserta(datos_paradaout,peticion.parada,peticion.pid,peticion.destino);
-  }
-	if(peticion.pintaborra==BORRAR){
-		if(peticion.inout==IN) quita(datos_paradain,peticion.parada,peticion.pid);
-		else quita(datos_paradaout,peticion.parada,peticion.pid);
-  }
+  if (peticion.tipo == 2) { // Peticiones de Clientes
+      if (peticion.pintaborra == PINTAR) {
+          if (peticion.inout == IN) inserta(datos_paradain, peticion.parada, peticion.pid, peticion.destino);
+          else inserta(datos_paradaout, peticion.parada, peticion.pid, peticion.destino);
+      }
+      if (peticion.pintaborra == BORRAR) {
+          if (peticion.inout == IN) quita(datos_paradain, peticion.parada, peticion.pid);
+          else quita(datos_paradaout, peticion.parada, peticion.pid);
+      }
 
-	if(peticion.inout==IN) pinta_clientes_inverso(vparadain[peticion.parada],datos_paradain,peticion.parada);
-	else pinta_clientes(vparadaout[peticion.parada],datos_paradaout,peticion.parada);
-  }
-  else { //son peticiones del autobús	
-	werase(vcarretera);
-	if(peticion.parada<10) { // son las paradas
-		mvwprintw(vcarretera,0,ANCHO*3*(peticion.parada-1)+ANCHO+ANCHO/2,"_____ ");
-		mvwprintw(vcarretera,1,ANCHO*3*(peticion.parada-1)+ANCHO+ANCHO/2,"|- - \\");		
-		mvwprintw(vcarretera,2,ANCHO*3*(peticion.parada-1)+ANCHO+ANCHO/2,"######");		
-		mvwprintw(vcarretera,3,ANCHO*3*(peticion.parada-1)+ANCHO+ANCHO/2," O  O ");		
+      if (peticion.inout == IN) pinta_entidades_inverso(vparadain[peticion.parada], datos_paradain, peticion.parada, peticion.tipo);
+      else pinta_entidades(vparadaout[peticion.parada], datos_paradaout, peticion.parada, peticion.tipo);
+      // La señal kill(pid, 10) para clientes PINTAR se maneja dentro de inserta().
 
-	}
-    else {// son los viajes entre paradas
-		mvwprintw(vcarretera,1,ANCHO*3*(peticion.parada%10-1),"_____ ");
-		mvwprintw(vcarretera,2,ANCHO*3*(peticion.parada%10-1),"|- - \\");		
-		mvwprintw(vcarretera,3,ANCHO*3*(peticion.parada%10-1),"######");		
-		mvwprintw(vcarretera,4,ANCHO*3*(peticion.parada%10-1)," O  O");		
-	}
-    wrefresh(vcarretera);
-    kill(peticion.pid,10); //le digo al proceso que puede continuar  
-  } 
+  } else if (peticion.tipo == 1) { // Peticiones del Autobús
+      werase(vcarretera);
+      if (peticion.parada < 10) { // son las paradas
+          mvwprintw(vcarretera, 0, ANCHO * 3 * (peticion.parada - 1) + ANCHO + ANCHO / 2, "_____ ");
+          mvwprintw(vcarretera, 1, ANCHO * 3 * (peticion.parada - 1) + ANCHO + ANCHO / 2, "|- - \\");
+          mvwprintw(vcarretera, 2, ANCHO * 3 * (peticion.parada - 1) + ANCHO + ANCHO / 2, "######");
+          mvwprintw(vcarretera, 3, ANCHO * 3 * (peticion.parada - 1) + ANCHO + ANCHO / 2, " O  O ");
+      } else { // son los viajes entre paradas
+          mvwprintw(vcarretera, 1, ANCHO * 3 * (peticion.parada % 10 - 1), "_____ ");
+          mvwprintw(vcarretera, 2, ANCHO * 3 * (peticion.parada % 10 - 1), "|- - \\");
+          mvwprintw(vcarretera, 3, ANCHO * 3 * (peticion.parada % 10 - 1), "######");
+          mvwprintw(vcarretera, 4, ANCHO * 3 * (peticion.parada % 10 - 1), " O  O");
+      }
+      wrefresh(vcarretera);
+      kill(peticion.pid, 10); //le digo al proceso que puede continuar
+
+  } else if (peticion.tipo == 3) { // Peticiones del Revisor
+      // Lógica completa para el Revisor
+      if (peticion.pintaborra == PINTAR) {
+          if (peticion.parada == 0) { // Revisor en el bus (ventana vparadaout[0])
+              inserta(datos_paradaout, 0, peticion.pid, peticion.destino);
+          } else if (peticion.inout == IN) { // Revisor llegando a parada (ventana IN)
+              inserta(datos_paradain, peticion.parada, peticion.pid, peticion.destino);
+          } else { // Revisor bajando en parada (ventana OUT de su parada de destino)
+              inserta(datos_paradaout, peticion.parada, peticion.pid, peticion.destino);
+          }
+      } else { // BORRAR
+          if (peticion.parada == 0) { // Revisor borrándose del bus
+              quita(datos_paradaout, 0, peticion.pid);
+          } else if (peticion.inout == IN) { // Revisor borrándose de ventana IN (al subir al bus)
+              quita(datos_paradain, peticion.parada, peticion.pid);
+          } else { // Revisor borrándose de ventana OUT (al terminar)
+              quita(datos_paradaout, peticion.parada, peticion.pid);
+          }
+      }
+
+      // Actualizar la ventana visual correspondiente para el revisor
+      if (peticion.parada == 0) { // Bus (vparadaout[0])
+          pinta_entidades(vparadaout[0], datos_paradaout, 0, peticion.tipo);
+      } else if (peticion.inout == IN) { // Ventana IN de la parada
+          pinta_entidades_inverso(vparadain[peticion.parada], datos_paradain, peticion.parada, peticion.tipo);
+      } else { // Ventana OUT de la parada
+          pinta_entidades(vparadaout[peticion.parada], datos_paradaout, peticion.parada, peticion.tipo);
+      }
+      // La señal 10 para PINTAR es manejada por inserta(). No se envía señal explícita para BORRAR por quita().
+      // Esto es consistente con el comportamiento del revisor que espera señal 10 para PINTAR o BORRAR.
+      // Si quita() no manda señal 10, y el revisor la espera para BORRAR, hay que ajustar revisor.c o quita().
+      // Revisando revisor.c: visualiza_revisor espera señal 10 si pintaborra == PINTAR o pintaborra == BORRAR.
+      // Por lo tanto, quita() debería enviar señal 10 si queremos mantener esa lógica en revisor.c
+      // O, revisor.c no debería esperar señal para BORRAR.
+      // Por ahora, mantendremos quita() como está (sin señal) y ajustaremos revisor.c en un subtask posterior si es necesario,
+      // o se asume que el servidor gráfico no necesita confirmar borrado al revisor.
+      // Para este subtask, nos centramos en que el servidor gráfico pinte correctamente.
+      // El 'kill' temporal que estaba aquí para el tipo 3 ya no es necesario porque inserta() lo maneja para PINTAR.
+      // Para BORRAR, si revisor.c espera señal, se quedará bloqueado. El 'kill' temporal sí cubría BORRAR.
+      // Solución temporal para BORRAR del revisor: enviar señal aquí.
+      if (peticion.pintaborra == BORRAR) {
+          kill(peticion.pid, 10); // Para que revisor.c no se bloquee al borrar
+      }
+
+  } else { // Tipo de petición desconocido
+      mvwprintw(vmensajes, 0, 0, "Tipo DESCONOCIDO (%ld) PID: %d", peticion.tipo, peticion.pid);
+      wrefresh(vmensajes);
+      // Si es un tipo desconocido pero tiene un PID, podríamos enviarle una señal
+      // para que no se quede bloqueado, si asumimos que espera una señal 10.
+      // kill(peticion.pid, 10);
+  }
   msgrcv(Id_Cola_Mensajes, (struct tipo_elemento *) &peticion,sizeof(struct tipo_elemento)-sizeof(long), 0, 0);     
  
  }
@@ -209,12 +261,20 @@ void pinta_escenario()
   refresh();
 
  // definimos los pares de colores
-   init_pair(COLOR_PARADAIN,COLOR_WHITE,COLOR_BLUE);
-   init_pair(COLOR_PARADAOUT,COLOR_RED,COLOR_WHITE);
-   init_pair(COLOR_BUS,COLOR_WHITE,COLOR_CYAN);
-   init_pair(COLOR_FONDO,COLOR_WHITE,COLOR_BLACK);
-   init_pair(COLOR_DIBUJOBUS,COLOR_YELLOW,COLOR_BLACK);
-   init_pair(COLOR_ACERA,COLOR_YELLOW,COLOR_BLUE);
+   init_pair(COLOR_PARADAIN,COLOR_WHITE,COLOR_BLUE);     // Par 1 (existente)
+   init_pair(COLOR_PARADAOUT,COLOR_RED,COLOR_WHITE);    // Par 2 (existente)
+   init_pair(COLOR_BUS,COLOR_WHITE,COLOR_CYAN);         // Par 3 (existente)
+   init_pair(COLOR_FONDO,COLOR_WHITE,COLOR_BLACK);      // Par 4 (existente)
+   init_pair(COLOR_DIBUJOBUS,COLOR_YELLOW,COLOR_BLACK); // Par 5 (existente)
+   init_pair(COLOR_ACERA,COLOR_YELLOW,COLOR_BLUE);      // Par 6 (existente)
+
+   // Nuevos pares de colores para el Revisor
+   // Revisor en la parada (ventana IN): Texto Verde, Fondo Azul (similar a PARADAIN pero con texto verde)
+   init_pair(COLOR_REVISOR_VERDE_PARADAIN, COLOR_GREEN, COLOR_BLUE);
+   // Revisor en el Bus (ventana vparadaout[0]): Texto Negro, Fondo Cyan (similar a BUS pero con texto negro)
+   init_pair(COLOR_REVISOR_NEGRO_BUS, COLOR_BLACK, COLOR_CYAN);
+   // Revisor saliendo de la parada (ventana OUT): Texto Negro, Fondo Blanco (similar a PARADAOUT pero con texto negro y fondo blanco)
+   init_pair(COLOR_REVISOR_NEGRO_PARADAOUT, COLOR_BLACK, COLOR_WHITE);
  
 
  
@@ -335,55 +395,84 @@ void visualiza_peticion(struct tipo_elemento peticion)
 }
 
 
-/************** FUNCION: pinta_clientes **********************************************************/
-/************** Pinta los clientes en la ventana que indiquemos *********************************/
+/************** FUNCION: pinta_entidades **********************************************************/
+/************** Pinta las entidades (clientes/revisor) en la ventana que indiquemos *********************************/
 
-
-void pinta_clientes(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada)
-{
+// void pinta_clientes(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada)
+void pinta_entidades(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada, int tipo_entidad) {
     int i;
-   
     werase(ventana);
-	
-	if(parada==0) wattron(ventana,COLOR_PAIR(COLOR_BUS));
-	else if (parada==7) wattron(ventana,COLOR_PAIR(COLOR_ACERA));
-		 else  wattron(ventana,COLOR_PAIR(COLOR_PARADAOUT));
 
-	if(parada==7) 
-	{
-    	for(i=0;i<MAXCLIENTES;i++) 
-     		if(datos_ventana[parada][i].elpid!=0)
-	 		{
-		 		wprintw(ventana," %02d-%d ",datos_ventana[parada][i].elpid%100,datos_ventana[parada][i].destino);
-	 		}
-	}
-	else
-	{ 
-    	for(i=0;i<ALTO;i++) 
-     		if(datos_ventana[parada][i].elpid!=0)
-	 		{
-		 		wprintw(ventana," %02d-%d ",datos_ventana[parada][i].elpid%100,datos_ventana[parada][i].destino);
-	 		}
-	}
+    if (tipo_entidad == 2) { // Cliente
+        if (parada == 0) wattron(ventana, COLOR_PAIR(COLOR_BUS)); // Cliente en el bus
+        else if (parada == 7) wattron(ventana, COLOR_PAIR(COLOR_ACERA)); // Cliente en la acera
+        else wattron(ventana, COLOR_PAIR(COLOR_PARADAOUT)); // Cliente en ventana OUT de parada (bajados)
+    } else if (tipo_entidad == 3) { // Revisor
+        if (parada == 0) { // Revisor en el bus
+            wattron(ventana, COLOR_PAIR(COLOR_REVISOR_NEGRO_BUS));
+        } else if (parada == 7) { // Revisor en la acera (actualmente no se usa para revisor)
+            wattron(ventana, COLOR_PAIR(COLOR_ACERA)); // Usar color de acera o uno específico si se define
+        } else { // Revisor en ventana OUT de parada (al bajarse del bus)
+            wattron(ventana, COLOR_PAIR(COLOR_REVISOR_NEGRO_PARADAOUT));
+        }
+    } else {
+        // Color por defecto o error si el tipo no es 1, 2 o 3
+        // wattron(ventana, COLOR_PAIR(COLOR_FONDO)); // Ejemplo
+    }
+
+    if (parada == 7) { // Acera tiene un layout diferente y usa MAXCLIENTES
+        for (i = 0; i < MAXCLIENTES; i++)
+            if (datos_ventana[parada][i].elpid != 0) {
+                // Para el revisor, podríamos querer mostrar "REV" en lugar de destino, o el PID completo.
+                if (tipo_entidad == 3) {
+                     wprintw(ventana, " REV%02d ", datos_ventana[parada][i].elpid % 100);
+                } else {
+                     wprintw(ventana, " %02d-%d ", datos_ventana[parada][i].elpid % 100, datos_ventana[parada][i].destino);
+                }
+            }
+    } else { // Bus (parada 0) o Paradas normales (ventanas OUT para paradas 1-6) usan ALTO
+        for (i = 0; i < ALTO; i++)
+            if (datos_ventana[parada][i].elpid != 0) {
+                if (tipo_entidad == 3) { // Revisor
+                    // Para el revisor en el bus (parada 0) o saliendo (parada 1-6 OUT)
+                    // Mostrar "REV" y su PID. El destino es relevante para el bus.
+                    wprintw(ventana, " REV%02d ", datos_ventana[parada][i].elpid % 100);
+                } else { // Cliente
+                    wprintw(ventana, " %02d-%d ", datos_ventana[parada][i].elpid % 100, datos_ventana[parada][i].destino);
+                }
+            }
+    }
     wrefresh(ventana);
 }
 
 
-/************** FUNCION: pinta_clientes inverso****************************************************/
-/************** Pinta los clientes en la ventana que indiquemos del último al primero*************/
+/************** FUNCION: pinta_entidades_inverso ****************************************************/
+/************** Pinta las entidades en la ventana que indiquemos del último al primero *************/
 
-void pinta_clientes_inverso(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada)
-{
+// void pinta_clientes_inverso(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada)
+void pinta_entidades_inverso(WINDOW *ventana, struct cliente datos_ventana[][MAXCLIENTES], int parada, int tipo_entidad) {
     int j;
-
     werase(ventana);
-    //wprintw(ventana,"\n");
-	wattron(ventana,COLOR_PAIR(COLOR_PARADAIN));
 
-     for(j=ALTO-1; j>=0; j--)
-      if(datos_ventana[parada][j].elpid!=0)
-		 wprintw(ventana," %02d-%d\n",datos_ventana[parada][j].elpid%100,datos_ventana[parada][j].destino);
-		else wprintw(ventana,"\n");
+    if (tipo_entidad == 2) { // Cliente
+        wattron(ventana, COLOR_PAIR(COLOR_PARADAIN)); // Cliente en ventana IN de parada
+    } else if (tipo_entidad == 3) { // Revisor
+        wattron(ventana, COLOR_PAIR(COLOR_REVISOR_VERDE_PARADAIN)); // Revisor llegando a la parada (ventana IN)
+    } else {
+        // Color por defecto o error
+        // wattron(ventana, COLOR_PAIR(COLOR_FONDO)); // Ejemplo
+    }
+
+    for (j = ALTO - 1; j >= 0; j--)
+        if (datos_ventana[parada][j].elpid != 0) {
+            if (tipo_entidad == 3) { // Revisor
+                 wprintw(ventana, " REV%02d\n", datos_ventana[parada][j].elpid % 100);
+            } else { // Cliente
+                 wprintw(ventana, " %02d-%d\n", datos_ventana[parada][j].elpid % 100, datos_ventana[parada][j].destino);
+            }
+        } else {
+            wprintw(ventana, "\n");
+        }
     wrefresh(ventana);
 }
 
