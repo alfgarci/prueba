@@ -129,19 +129,19 @@ int main() {
 /***********    FUNCION: pinta   ****************************************/
 /************************************************************************/
 
-void pinta(int cola, int parada) {
+void pinta(int cola, int parada_actual) {
   struct tipo_elemento peticion;
 
   peticion.tipo = 1; // Los clientes son tipo 2, el autobus tipo 1
   peticion.pid = getpid();
-  peticion.parada = parada;
+  peticion.parada = parada_actual;
   peticion.inout = 0;      // no se usa
-  peticion.pintaborra = 0; // no se usa
+  peticion.pintaborra = PINTAR; // no se usa
   peticion.destino = 0;    // no se usa
 
   if (msgsnd(cola, (struct tipo_elemento *)&peticion,
              sizeof(struct tipo_elemento) - sizeof(long), 0) == -1)
-    perror("error al enviar mensaje a cola");
+    perror("bus: error al enviar mensaje a cola");
   if (!llega10)
     pause(); // espero conformidad de que me han pintado, sino me mataran
   llega10 = 0;
